@@ -107,6 +107,10 @@ class Ship(pg.sprite.Sprite):
         self.alive = True
         self.r = C.SHIP_RADIUS
         self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
+        self.is_dashing = False
+        self.dash_timer = 0.0
+        self.cooldown_timer = 0.0
+        self._pre_dash_vel = None
 
     def control(self, keys: pg.key.ScancodeWrapper, dt: float):
         # Apply rotation, thrust, and friction from the current input state.
@@ -114,6 +118,8 @@ class Ship(pg.sprite.Sprite):
             self.angle -= C.SHIP_TURN_SPEED * dt
         if keys[pg.K_RIGHT]:
             self.angle += C.SHIP_TURN_SPEED * dt
+        if self.is_dashing:
+            return
         if keys[pg.K_UP]:
             self.vel += angle_to_vec(self.angle) * C.SHIP_THRUST * dt
         self.vel *= C.SHIP_FRICTION
@@ -134,12 +140,38 @@ class Ship(pg.sprite.Sprite):
         self.vel.xy = (0, 0)
         self.invuln = 1.0
 
+    def dash(self):
+        # Apply a forward impulse with temporary invulnerability.
+        if self.is_dashing or self.cooldown_timer > 0:
+            return
+        self._pre_dash_vel = Vec(self.vel)
+        self.vel = angle_to_vec(self.angle) * C.DASH_FORCE * C.SHIP_THRUST
+        self.is_dashing = True
+        self.dash_timer = C.DASH_DURATION
+        self.invuln = max(self.invuln, C.DASH_DURATION)
+        self.cooldown_timer = C.DASH_COOLDOWN
+
+    @property
+    def is_invulnerable(self):
+        return self.invuln > 0
+
     def update(self, dt: float):
         # Advance cooldowns, move the ship, and wrap it on screen.
         if self.cool > 0:
             self.cool -= dt
         if self.invuln > 0:
             self.invuln -= dt
+        if self.cooldown_timer > 0:
+            self.cooldown_timer -= dt
+            if self.cooldown_timer < 0:
+                self.cooldown_timer = 0.0
+        if self.is_dashing:
+            self.dash_timer -= dt
+            if self.dash_timer <= 0:
+                self.dash_timer = 0.0
+                self.is_dashing = False
+                self.vel = Vec(self._pre_dash_vel)
+                self._pre_dash_vel = None
         self.pos += self.vel * dt
         self.pos = wrap_pos(self.pos)
         self.rect.center = self.pos
@@ -153,7 +185,9 @@ class Ship(pg.sprite.Sprite):
         p2 = self.pos + left * self.r * 0.9
         p3 = self.pos + right * self.r * 0.9
         draw_poly(surf, [p1, p2, p3])
-        if self.invuln > 0 and int(self.invuln * 10) % 2 == 0:
+        if self.is_dashing:
+            draw_circle(surf, self.pos, self.r + 6)
+        elif self.invuln > 0 and int(self.invuln * 10) % 2 == 0:
             draw_circle(surf, self.pos, self.r + 6)
 
 
