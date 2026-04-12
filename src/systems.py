@@ -8,7 +8,7 @@ from random import uniform
 import pygame as pg
 
 import config as C
-from sprites import Asteroid, Ship, UFO, BlackHole
+from sprites import Asteroid, Ship, UFO, BlackHole, Parasite
 from utils import Vec, rand_edge_pos, rand_unit_vec
 
 
@@ -20,6 +20,8 @@ class World:
         self.ufo_bullets = pg.sprite.Group()
         self.asteroids = pg.sprite.Group()
         self.ufos = pg.sprite.Group()
+        self.parasites = pg.sprite.Group()
+        self.parasite_timer = uniform(C.PARASITE_TIMER_MIN, C.PARASITE_TIMER_MAX)
         self.black_hole = None
         self.bh_timer = uniform(C.BH_TIMER_MIN, C.BH_TIMER_MAX)
         self.bh_duration = 0
@@ -82,6 +84,12 @@ class World:
         self.all_sprites.add(bh)
         self.bh_duration = uniform(C.BH_DURATION_MIN, C.BH_DURATION_MAX)
 
+    def spawn_parasite(self):
+        pos = rand_edge_pos()
+        p = Parasite(pos)
+        self.parasites.add(p)
+        self.all_sprites.add(p)
+
     def try_fire(self):
         # Fire a player bullet when the bullet cap allows it.
         if len(self.bullets) >= C.MAX_BULLETS:
@@ -99,10 +107,13 @@ class World:
     def try_dash(self):
         self.ship.dash()
 
+
     def update(self, dt: float, keys):
         # Update the world simulation, timers, enemy behavior, and progression.
         self.ship.control(keys, dt)
-        self.all_sprites.update(dt)
+        for spr in self.all_sprites:
+            if not isinstance(spr, Parasite):   #atualiza tudo menos parasite
+                spr.update(dt)
         
         #spawn do buraco negro
         if self.black_hole:
@@ -126,6 +137,12 @@ class World:
                 force = self.black_hole.strength / (dist + 1) #diminui com a distancia
                 self.ship.vel += dir_vec * force * dt * 50
 
+        # spawn de parasite
+        self.parasite_timer -= dt
+        if self.parasite_timer <= 0:
+            self.spawn_parasite()
+            self.parasite_timer = uniform(C.PARASITE_TIMER_MIN, C.PARASITE_TIMER_MAX)
+
         if self.safe > 0:
             self.safe -= dt
             self.ship.invuln = 0.5
@@ -136,6 +153,11 @@ class World:
         if not self.ufos and self.ufo_timer <= 0:
             self.spawn_ufo()
             self.ufo_timer = C.UFO_SPAWN_EVERY
+        
+        for p in self.parasites:
+            p.update(dt, self.ship)
+        attached_count = sum(1 for p in self.parasites if p.attached)
+        self.ship.slow_factor = min(2.5, 1 + attached_count * 0.1)
 
         self.handle_collisions()
 
@@ -167,6 +189,16 @@ class World:
         for ast, _ in ufo_hits.items():
             self.split_asteroid(ast)
 
+        parasite_hits = pg.sprite.groupcollide(
+            self.parasites,
+            self.bullets,
+            True,
+            True, 
+            collided=lambda p, b: (not p.attached) and (p.pos - b.pos).length() < p.r,
+        )
+        for p in parasite_hits:
+            self.score += C.PARASITE_SCORE
+
         if self.ship.invuln <= 0 and self.safe <= 0:
             for ast in self.asteroids:
                 if (ast.pos - self.ship.pos).length() < (ast.r + self.ship.r):
@@ -190,6 +222,13 @@ class World:
                     self.score += score
                     ufo.kill()
                     b.kill()
+        
+        for p in self.parasites:
+            if not p.attached:
+                if (p.pos - self.ship.pos).length() < (p.r + self.ship.r):
+                    p.attach(self.ship)
+
+        
 
         if self.black_hole:
             dist = (self.black_hole.pos - self.ship.pos).length()
