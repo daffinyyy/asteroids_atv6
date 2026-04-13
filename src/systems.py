@@ -82,6 +82,9 @@ class World:
         self.ship.hyperspace()
         self.score = max(0, self.score - C.HYPERSPACE_COST)
 
+    def try_dash(self):
+        self.ship.dash()
+
     def update(self, dt: float, keys):
         # Update the world simulation, timers, enemy behavior, and progression.
         self.ship.control(keys, dt)
@@ -172,6 +175,10 @@ class World:
         self.ship.vel.xy = (0, 0)
         self.ship.angle = -90
         self.ship.invuln = C.SAFE_SPAWN_TIME
+        self.ship.is_dashing = False
+        self.ship.dash_timer = 0.0
+        self.ship.cooldown_timer = 0.0
+        self.ship._pre_dash_vel = None
         self.safe = C.SAFE_SPAWN_TIME
 
     def draw(self, surf: pg.Surface, font: pg.font.Font):
@@ -183,3 +190,11 @@ class World:
         txt = f"SCORE {self.score:06d}   LIVES {self.lives}   WAVE {self.wave}"
         label = font.render(txt, True, C.WHITE)
         surf.blit(label, (10, 10))
+
+        if self.ship.cooldown_timer > 0:
+            dl = font.render(f"DASH {self.ship.cooldown_timer:.1f}s", True, C.GRAY)
+        elif self.ship.is_dashing:
+            dl = font.render("DASH!", True, C.WHITE)
+        else:
+            dl = font.render("DASH OK", True, C.WHITE)
+        surf.blit(dl, (C.WIDTH - 130, 10))
