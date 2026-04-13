@@ -90,9 +90,35 @@ class Asteroid(pg.sprite.Sprite):
         self.rect.center = self.pos
 
     def draw(self, surf: pg.Surface):
-        # Draw the asteroid outline on the target surface.
         pts = [(self.pos + p) for p in self.poly]
         pg.draw.polygon(surf, C.WHITE, pts, width=1)
+
+
+class PowerAsteroid(Asteroid):
+
+    def __init__(self, pos: Vec, vel: Vec):
+        super().__init__(pos, vel, "S")
+        self.pulse_timer = 0.0
+
+    def update(self, dt: float):
+        super().update(dt)
+        self.pulse_timer += dt
+
+    def draw(self, surf: pg.Surface):
+        glow_r = int(self.r + 6 + 3 * math.sin(self.pulse_timer * 4))
+        glow_surf = pg.Surface((glow_r * 2, glow_r * 2), pg.SRCALPHA)
+        pg.draw.circle(
+            glow_surf,
+            (*C.SPREAD_GLOW, 60),
+            (glow_r, glow_r),
+            glow_r,
+        )
+        surf.blit(
+            glow_surf,
+            (self.pos.x - glow_r, self.pos.y - glow_r),
+        )
+        pts = [(self.pos + p) for p in self.poly]
+        pg.draw.polygon(surf, C.SPREAD_COLOR, pts, width=2)
 
 
 class Ship(pg.sprite.Sprite):
@@ -111,6 +137,7 @@ class Ship(pg.sprite.Sprite):
         self.dash_timer = 0.0
         self.cooldown_timer = 0.0
         self._pre_dash_vel = None
+        self.has_spread_shot = False
 
     def control(self, keys: pg.key.ScancodeWrapper, dt: float):
         # Apply rotation, thrust, and friction from the current input state.
@@ -130,14 +157,26 @@ class Ship(pg.sprite.Sprite):
         
         
 
-    def fire(self) -> Bullet | None:
-        # Spawn a player bullet when the fire cooldown allows it.
+    def fire(self):
         if self.cool > 0:
             return None
+        self.cool = C.SHIP_FIRE_RATE
+
+        if self.has_spread_shot:
+            self.has_spread_shot = False
+            bullets = []
+            for i in range(C.SPREAD_BULLET_COUNT):
+                angle = (360 / C.SPREAD_BULLET_COUNT) * i
+                rad = math.radians(angle)
+                direction = Vec(math.cos(rad), math.sin(rad))
+                spawn_pos = self.pos + direction * (self.r + 6)
+                vel = direction * C.SHIP_BULLET_SPEED
+                bullets.append(Bullet(spawn_pos, vel))
+            return bullets
+
         dirv = angle_to_vec(self.angle)
         pos = self.pos + dirv * (self.r + 6)
         vel = self.vel + dirv * C.SHIP_BULLET_SPEED
-        self.cool = C.SHIP_FIRE_RATE
         return Bullet(pos, vel)
 
     def hyperspace(self):

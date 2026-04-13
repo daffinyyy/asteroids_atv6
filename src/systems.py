@@ -8,7 +8,9 @@ from random import uniform
 import pygame as pg
 
 import config as C
-from sprites import Asteroid, Boss, BossBullet, Ship, UFO, BlackHole, Parasite
+from sprites import (
+    Asteroid, Boss, BossBullet, PowerAsteroid, Ship, UFO, BlackHole, Parasite,
+)
 from utils import Vec, rand_edge_pos, rand_unit_vec
 
 
@@ -38,6 +40,8 @@ class World:
         self.boss_warning = 0.0
         self.boss_bullets = pg.sprite.Group()
         self.boss_defeated_timer = 0.0
+        self.power_asteroids = pg.sprite.Group()
+        self.spread_boss_timer = C.SPREAD_BOSS_INTERVAL
 
 
 
@@ -54,11 +58,26 @@ class World:
             vel = Vec(math.cos(ang), math.sin(ang)) * speed
             self.spawn_asteroid(pos, vel, "L")
 
+        self.spawn_power_asteroid()
+        if uniform(0, 1) < C.SPREAD_ASTEROID_CHANCE:
+            self.spawn_power_asteroid()
+
     def spawn_asteroid(self, pos: Vec, vel: Vec, size: str):
-        # Create an asteroid and register it in the world groups.
         a = Asteroid(pos, vel, size)
         self.asteroids.add(a)
         self.all_sprites.add(a)
+
+    def spawn_power_asteroid(self):
+        pos = rand_edge_pos()
+        while (pos - self.ship.pos).length() < 150:
+            pos = rand_edge_pos()
+        ang = uniform(0, math.tau)
+        speed = uniform(C.AST_VEL_MIN, C.AST_VEL_MAX)
+        vel = Vec(math.cos(ang), math.sin(ang)) * speed
+        pa = PowerAsteroid(pos, vel)
+        self.power_asteroids.add(pa)
+        self.asteroids.add(pa)
+        self.all_sprites.add(pa)
 
     def spawn_ufo(self):
         # Spawn a single UFO at a screen edge and send it across the playfield.
@@ -98,7 +117,15 @@ class World:
         self.all_sprites.add(p)
 
     def try_fire(self):
-        # Fire a player bullet when the bullet cap allows it.
+        if self.ship.has_spread_shot:
+            result = self.ship.fire()
+            if result is None:
+                return
+            for b in result:
+                self.bullets.add(b)
+                self.all_sprites.add(b)
+            return
+
         if len(self.bullets) >= C.MAX_BULLETS:
             return
         b = self.ship.fire()
@@ -244,6 +271,11 @@ class World:
             vel = aim * uniform(C.AST_VEL_MIN, C.AST_VEL_MAX) * 1.5
             self.spawn_asteroid(Vec(self.boss.pos), vel, "M")
 
+        self.spread_boss_timer -= dt
+        if self.spread_boss_timer <= 0:
+            self.spread_boss_timer = C.SPREAD_BOSS_INTERVAL
+            self.spawn_power_asteroid()
+
     def handle_collisions(self):
         # Resolve collisions between bullets, asteroids, UFOs, and the ship.
         hits = pg.sprite.groupcollide(
@@ -254,7 +286,12 @@ class World:
             collided=lambda a, b: (a.pos - b.pos).length() < a.r,
         )
         for ast, _ in hits.items():
-            self.split_asteroid(ast)
+            if isinstance(ast, PowerAsteroid):
+                self.ship.has_spread_shot = True
+                self.score += C.AST_SIZES[ast.size]["score"]
+                ast.kill()
+            else:
+                self.split_asteroid(ast)
 
         ufo_hits = pg.sprite.groupcollide(
             self.asteroids,
@@ -375,6 +412,11 @@ class World:
         else:
             dl = font.render("DASH OK", True, C.WHITE)
         surf.blit(dl, (C.WIDTH - 130, 10))
+
+        if self.ship.has_spread_shot:
+            sl = font.render("SPREAD READY", True, C.SPREAD_COLOR)
+            surf.blit(sl, (C.WIDTH - 280, 10))
+
         if self.boss and self.boss.alive():
             self.boss.draw_hp_bar(surf)
 
