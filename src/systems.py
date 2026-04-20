@@ -1,4 +1,3 @@
-
 # ASTEROIDE SINGLEPLAYER v1.0
 # This file coordinates world state, spawning, collisions, scoring, and progression.
 
@@ -141,6 +140,13 @@ class World:
         # Trigger the ship hyperspace action and apply its score penalty.
         self.ship.hyperspace()
         self.score = max(0, self.score - C.HYPERSPACE_COST)
+
+    def try_shield(self):
+        # Ativa o shield da nave se disponível.
+        self.ship.activate_shield()
+
+    # def try_dash(self):
+    #     self.ship.dash()
 
 
     def update(self, dt: float, keys):
@@ -354,7 +360,7 @@ class World:
         # for p in parasite_hits:
         #     self.score += C.PARASITE_SCORE
 
-        if self.ship.invuln <= 0 and self.safe <= 0:
+        if self.ship.invuln <= 0 and self.safe <= 0 and not self.ship.shield_active:
             for ast in self.asteroids:
                 if (ast.pos - self.ship.pos).length() < (ast.r + self.ship.r):
                     self.ship_die()
@@ -468,6 +474,16 @@ class World:
             sl = font.render("SPREAD OK", True, C.SPREAD_COLOR)
         surf.blit(sl, (C.WIDTH - 180, 10))
 
+        if self.ship.shield_active:
+            sh = font.render(f"SHIELD {self.ship.shield_timer:.1f}s", True, C.SHIELD_COLOR)
+            surf.blit(sh, (C.WIDTH - 160, 30))
+        elif self.ship.shield_cooldown > 0:
+            sh = font.render(f"SHIELD CD {self.ship.shield_cooldown:.0f}s", True, C.GRAY)
+            surf.blit(sh, (C.WIDTH - 190, 30))
+        else:
+            sh = font.render("SHIELD OK", True, C.SHIELD_COLOR)
+            surf.blit(sh, (C.WIDTH - 160, 30))
+
         if self.freeze_timer > 0:
             fl = font.render(f"FREEZE: {self.freeze_timer:.1f}s", True, C.ICY_BLUE)
             surf.blit(fl, (C.WIDTH // 2 - fl.get_width() // 2, 10))
@@ -484,4 +500,3 @@ class World:
         #     msg = font.render("BOSS DEFEATED!", True, C.ORANGE)
         #     rect = msg.get_rect(center=(C.WIDTH // 2, C.HEIGHT // 2))
         #     surf.blit(msg, rect)
-
