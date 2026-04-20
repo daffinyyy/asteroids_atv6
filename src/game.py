@@ -55,8 +55,8 @@ class Game:
                             self.world.try_fire()
                         if e.key == pg.K_LSHIFT:
                             self.world.hyperspace()
-                        # if e.key == pg.K_RSHIFT:
-                        #     self.world.try_dash()
+                        if e.key == pg.K_RSHIFT:
+                            self.world.try_spread()
                     elif self.scene.name == "menu":
                         self.world = World()
                         self.scene = Scene("play")
@@ -116,4 +116,7 @@ class Game:
              "Setas: virar/acelerar  Espaco: tiro  LShift: hiper",
              160, 300)
         text(self.screen, self.font,
-             "Pressione qualquer tecla...", 260, 360)
+             "RShift: tiro espalhado (15s cooldown)",
+             230, 330)
+        text(self.screen, self.font,
+             "Pressione qualquer tecla...", 260, 390)

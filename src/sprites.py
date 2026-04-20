@@ -115,7 +115,7 @@ class PowerAsteroid(Asteroid):
         glow_surf = pg.Surface((glow_r * 2, glow_r * 2), pg.SRCALPHA)
         pg.draw.circle(
             glow_surf,
-            (*C.SPREAD_GLOW, 60),
+            (*C.LIFE_COLOR, 60),
             (glow_r, glow_r),
             glow_r,
         )
@@ -126,7 +126,7 @@ class PowerAsteroid(Asteroid):
         pts = [(self.pos + p) for p in self.poly]
         if getattr(self, "frozen", False):
             pg.draw.polygon(surf, C.ICY_BLUE, pts, width=0)
-        pg.draw.polygon(surf, C.SPREAD_COLOR, pts, width=2)
+        pg.draw.polygon(surf, C.LIFE_COLOR, pts, width=2)
 
 class ClockItem(pg.sprite.Sprite):
     def __init__(self, pos: Vec):
@@ -148,6 +148,38 @@ class ClockItem(pg.sprite.Sprite):
         pg.draw.line(surf, C.CLOCK_COLOR, self.pos, self.pos + Vec(self.r * 0.6, 0), 2)
 
 
+class LifeItem(pg.sprite.Sprite):
+    # power-up de vida extra — aparece ao destruir o asteroide especial
+    def __init__(self, pos: Vec):
+        super().__init__()
+        self.pos = Vec(pos)
+        self.r = C.LIFE_ITEM_RADIUS
+        self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
+        self.ttl = C.LIFE_ITEM_TTL
+        self.pulse_timer = 0.0
+
+    def update(self, dt: float):
+        self.ttl -= dt
+        self.pulse_timer += dt
+        if self.ttl <= 0:
+            self.kill()
+        self.rect.center = self.pos
+
+    def draw(self, surf: pg.Surface):
+        # desenha um coracao simples pulsando
+        scale = 1.0 + 0.15 * math.sin(self.pulse_timer * 4)
+        r = int(self.r * scale)
+        cx, cy = int(self.pos.x), int(self.pos.y)
+        # dois circulos em cima + triangulo embaixo = coracao
+        pg.draw.circle(surf, C.LIFE_COLOR, (cx - r // 3, cy - r // 4), r // 2)
+        pg.draw.circle(surf, C.LIFE_COLOR, (cx + r // 3, cy - r // 4), r // 2)
+        pg.draw.polygon(surf, C.LIFE_COLOR, [
+            (cx - r + 2, cy - r // 6),
+            (cx + r - 2, cy - r // 6),
+            (cx, cy + r),
+        ])
+
+
 class Ship(pg.sprite.Sprite):
     # Initialize the player ship and its gameplay state.
     def __init__(self, pos: Vec):
@@ -164,7 +196,9 @@ class Ship(pg.sprite.Sprite):
         # self.dash_timer = 0.0
         # self.cooldown_timer = 0.0
         # self._pre_dash_vel = None
-        self.has_spread_shot = False
+        
+        # cooldown do tiro espalhado (habilidade do shift direito)
+        self.spread_cool = 0.0
 
     def control(self, keys: pg.key.ScancodeWrapper, dt: float):
         # Apply rotation, thrust, and friction from the current input state.
@@ -193,22 +227,25 @@ class Ship(pg.sprite.Sprite):
             return None
         self.cool = C.SHIP_FIRE_RATE
 
-        if self.has_spread_shot:
-            self.has_spread_shot = False
-            bullets = []
-            for i in range(C.SPREAD_BULLET_COUNT):
-                angle = (360 / C.SPREAD_BULLET_COUNT) * i
-                rad = math.radians(angle)
-                direction = Vec(math.cos(rad), math.sin(rad))
-                spawn_pos = self.pos + direction * (self.r + 6)
-                vel = direction * C.SHIP_BULLET_SPEED
-                bullets.append(Bullet(spawn_pos, vel))
-            return bullets
-
         dirv = angle_to_vec(self.angle)
         pos = self.pos + dirv * (self.r + 6)
         vel = self.vel + dirv * C.SHIP_BULLET_SPEED
         return Bullet(pos, vel)
+
+    def spread_fire(self):
+        # dispara tiros em todas as direções (habilidade com cooldown)
+        if self.spread_cool > 0:
+            return None
+        self.spread_cool = C.SPREAD_COOLDOWN
+        bullets = []
+        for i in range(C.SPREAD_BULLET_COUNT):
+            angle = (360 / C.SPREAD_BULLET_COUNT) * i
+            rad = math.radians(angle)
+            direction = Vec(math.cos(rad), math.sin(rad))
+            spawn_pos = self.pos + direction * (self.r + 6)
+            vel = direction * C.SHIP_BULLET_SPEED
+            bullets.append(Bullet(spawn_pos, vel))
+        return bullets
 
     def hyperspace(self):
         # Teleport the ship to a random location and reset its momentum.
@@ -237,6 +274,13 @@ class Ship(pg.sprite.Sprite):
             self.cool -= dt
         if self.invuln > 0:
             self.invuln -= dt
+            
+        # reduz cooldown do spread shot
+        if self.spread_cool > 0:
+            self.spread_cool -= dt
+            if self.spread_cool < 0:
+                self.spread_cool = 0
+                
         # if self.cooldown_timer > 0:
         #     self.cooldown_timer -= dt
         #     if self.cooldown_timer < 0:

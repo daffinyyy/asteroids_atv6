@@ -17,6 +17,9 @@ SHIP_FIRE_RATE = 0.2
 SHIP_BULLET_SPEED = 420.0
 HYPERSPACE_COST = 250
 
+# habilidade de tiro espalhado (shift direito)
+SPREAD_COOLDOWN = 15.0
+
 #implementação do dash
 # DASH_DURATION = 0.15
 # DASH_COOLDOWN = 5.0
@@ -103,6 +106,11 @@ SPREAD_ASTEROID_CHANCE = 0.15
 SPREAD_COLOR = (255, 200, 50)
 SPREAD_GLOW = (255, 160, 0)
 SPREAD_BOSS_INTERVAL = 20.0
+
+# power-up de vida extra (drop do asteroide especial)
+LIFE_ITEM_RADIUS = 12
+LIFE_ITEM_TTL = 15.0
+LIFE_COLOR = (255, 80, 120)
 
 FREEZE_DURATION = 10.0
 FREEZE_ITEM_CHANCE = 0.08

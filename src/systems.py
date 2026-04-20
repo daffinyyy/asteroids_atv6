@@ -9,7 +9,7 @@ import pygame as pg
 
 import config as C
 from sprites import (
-    Asteroid, BossBullet, PowerAsteroid, Ship, UFO, BlackHole, ClockItem
+    Asteroid, BossBullet, PowerAsteroid, Ship, UFO, BlackHole, ClockItem, LifeItem
 )
 from utils import Vec, rand_edge_pos, rand_unit_vec
 
@@ -43,6 +43,7 @@ class World:
         self.power_asteroids = pg.sprite.Group()
         self.spread_boss_timer = C.SPREAD_BOSS_INTERVAL
         self.clock_items = pg.sprite.Group()
+        self.life_items = pg.sprite.Group()
         self.freeze_timer = 0.0
 
 
@@ -60,7 +61,6 @@ class World:
             vel = Vec(math.cos(ang), math.sin(ang)) * speed
             self.spawn_asteroid(pos, vel, "L")
 
-        self.spawn_power_asteroid()
         if uniform(0, 1) < C.SPREAD_ASTEROID_CHANCE:
             self.spawn_power_asteroid()
 
@@ -121,15 +121,6 @@ class World:
     #     self.all_sprites.add(p)
 
     def try_fire(self):
-        if self.ship.has_spread_shot:
-            result = self.ship.fire()
-            if result is None:
-                return
-            for b in result:
-                self.bullets.add(b)
-                self.all_sprites.add(b)
-            return
-
         if len(self.bullets) >= C.MAX_BULLETS:
             return
         b = self.ship.fire()
@@ -137,13 +128,19 @@ class World:
             self.bullets.add(b)
             self.all_sprites.add(b)
 
+    def try_spread(self):
+        # ativa o tiro espalhado (shift direito, com cooldown)
+        result = self.ship.spread_fire()
+        if result is None:
+            return
+        for b in result:
+            self.bullets.add(b)
+            self.all_sprites.add(b)
+
     def hyperspace(self):
         # Trigger the ship hyperspace action and apply its score penalty.
         self.ship.hyperspace()
         self.score = max(0, self.score - C.HYPERSPACE_COST)
-
-    # def try_dash(self):
-    #     self.ship.dash()
 
 
     def update(self, dt: float, keys):
@@ -315,8 +312,11 @@ class World:
         )
         for ast, _ in hits.items():
             if isinstance(ast, PowerAsteroid):
-                self.ship.has_spread_shot = True
+                # asteroide especial dropa item de vida extra
                 self.score += C.AST_SIZES[ast.size]["score"]
+                life = LifeItem(Vec(ast.pos))
+                self.life_items.add(life)
+                self.all_sprites.add(life)
                 ast.kill()
             else:
                 self.split_asteroid(ast)
@@ -337,6 +337,12 @@ class World:
                 self.freeze_timer = C.FREEZE_DURATION
                 for a in self.asteroids:
                     a.frozen = True
+
+        # coleta de vida extra
+        for item in list(self.life_items):
+            if (item.pos - self.ship.pos).length() < (item.r + self.ship.r):
+                item.kill()
+                self.lives += 1
 
         # parasite_hits = pg.sprite.groupcollide(
         #     self.parasites,
@@ -455,9 +461,12 @@ class World:
         #     dl = font.render("DASH OK", True, C.WHITE)
         # surf.blit(dl, (C.WIDTH - 130, 10))
 
-        if self.ship.has_spread_shot:
-            sl = font.render("SPREAD READY", True, C.SPREAD_COLOR)
-            surf.blit(sl, (C.WIDTH - 280, 10))
+        # mostra o estado do spread shot no HUD
+        if self.ship.spread_cool > 0:
+            sl = font.render(f"SPREAD {self.ship.spread_cool:.1f}s", True, C.GRAY)
+        else:
+            sl = font.render("SPREAD OK", True, C.SPREAD_COLOR)
+        surf.blit(sl, (C.WIDTH - 180, 10))
 
         if self.freeze_timer > 0:
             fl = font.render(f"FREEZE: {self.freeze_timer:.1f}s", True, C.ICY_BLUE)
