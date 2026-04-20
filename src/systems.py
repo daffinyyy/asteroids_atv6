@@ -9,7 +9,7 @@ import pygame as pg
 
 import config as C
 from sprites import (
-    Asteroid, BossBullet, PowerAsteroid, Ship, UFO, BlackHole
+    Asteroid, BossBullet, PowerAsteroid, Ship, UFO, BlackHole, ClockItem
 )
 from utils import Vec, rand_edge_pos, rand_unit_vec
 
@@ -42,6 +42,8 @@ class World:
         self.boss_defeated_timer = 0.0
         self.power_asteroids = pg.sprite.Group()
         self.spread_boss_timer = C.SPREAD_BOSS_INTERVAL
+        self.clock_items = pg.sprite.Group()
+        self.freeze_timer = 0.0
 
 
 
@@ -64,6 +66,7 @@ class World:
 
     def spawn_asteroid(self, pos: Vec, vel: Vec, size: str):
         a = Asteroid(pos, vel, size)
+        a.frozen = self.freeze_timer > 0
         self.asteroids.add(a)
         self.all_sprites.add(a)
 
@@ -75,6 +78,7 @@ class World:
         speed = uniform(C.AST_VEL_MIN, C.AST_VEL_MAX)
         vel = Vec(math.cos(ang), math.sin(ang)) * speed
         pa = PowerAsteroid(pos, vel)
+        pa.frozen = self.freeze_timer > 0
         self.power_asteroids.add(pa)
         self.asteroids.add(pa)
         self.all_sprites.add(pa)
@@ -144,6 +148,13 @@ class World:
 
     def update(self, dt: float, keys):
         # Update the world simulation, timers, enemy behavior, and progression.
+        if self.freeze_timer > 0:
+            self.freeze_timer -= dt
+            if self.freeze_timer <= 0:
+                self.freeze_timer = 0
+                for a in self.asteroids:
+                    a.frozen = False
+
         self.ship.control(keys, dt)
         self.all_sprites.update(dt)
 
@@ -222,21 +233,22 @@ class World:
                 self.start_wave()
             return
 
-        if not self.asteroids and self.wave_cool <= 0:
-        # if self.boss_active:
-        #     self.update_boss(dt)
-        # elif self.boss_warning > 0:
-        #     self.boss_warning -= dt
-        #     if self.boss_warning <= 0:
-        #         self.spawn_boss()
-        # elif not self.asteroids and self.wave_cool <= 0:
-        #     if self.wave == 0:
-            self.start_wave()
-        #     else:    
-        #         self.boss_warning = C.BOSS_WARNING_TIME
-            self.wave_cool = C.WAVE_DELAY
-        elif not self.asteroids:
-            self.wave_cool -= dt
+        if self.freeze_timer <= 0:
+            if not self.asteroids and self.wave_cool <= 0:
+            # if self.boss_active:
+            #     self.update_boss(dt)
+            # elif self.boss_warning > 0:
+            #     self.boss_warning -= dt
+            #     if self.boss_warning <= 0:
+            #         self.spawn_boss()
+            # elif not self.asteroids and self.wave_cool <= 0:
+            #     if self.wave == 0:
+                self.start_wave()
+            #     else:    
+            #         self.boss_warning = C.BOSS_WARNING_TIME
+                self.wave_cool = C.WAVE_DELAY
+            elif not self.asteroids:
+                self.wave_cool -= dt
 
     # def spawn_boss(self):
     #     if self.black_hole:
@@ -319,6 +331,13 @@ class World:
         for ast, _ in ufo_hits.items():
             self.split_asteroid(ast)
 
+        for item in list(self.clock_items):
+            if (item.pos - self.ship.pos).length() < (item.r + self.ship.r):
+                item.kill()
+                self.freeze_timer = C.FREEZE_DURATION
+                for a in self.asteroids:
+                    a.frozen = True
+
         # parasite_hits = pg.sprite.groupcollide(
         #     self.parasites,
         #     self.bullets,
@@ -389,6 +408,12 @@ class World:
         self.score += C.AST_SIZES[ast.size]["score"]
         split = C.AST_SIZES[ast.size]["split"]
         pos = Vec(ast.pos)
+
+        if not isinstance(ast, PowerAsteroid) and uniform(0, 1) < C.FREEZE_ITEM_CHANCE:
+            item = ClockItem(pos)
+            self.clock_items.add(item)
+            self.all_sprites.add(item)
+
         ast.kill()
         for s in split:
             dirv = rand_unit_vec()
@@ -433,6 +458,10 @@ class World:
         if self.ship.has_spread_shot:
             sl = font.render("SPREAD READY", True, C.SPREAD_COLOR)
             surf.blit(sl, (C.WIDTH - 280, 10))
+
+        if self.freeze_timer > 0:
+            fl = font.render(f"FREEZE: {self.freeze_timer:.1f}s", True, C.ICY_BLUE)
+            surf.blit(fl, (C.WIDTH // 2 - fl.get_width() // 2, 10))
 
         # if self.boss and self.boss.alive():
         #     self.boss.draw_hp_bar(surf)

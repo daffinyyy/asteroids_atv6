@@ -85,12 +85,16 @@ class Asteroid(pg.sprite.Sprite):
 
     def update(self, dt: float):
         # Move the asteroid and wrap it across the screen.
+        if getattr(self, "frozen", False):
+            return
         self.pos += self.vel * dt
         self.pos = wrap_pos(self.pos)
         self.rect.center = self.pos
 
     def draw(self, surf: pg.Surface):
         pts = [(self.pos + p) for p in self.poly]
+        if getattr(self, "frozen", False):
+            pg.draw.polygon(surf, C.ICY_BLUE, pts, width=0)
         pg.draw.polygon(surf, C.WHITE, pts, width=1)
 
 
@@ -101,6 +105,8 @@ class PowerAsteroid(Asteroid):
         self.pulse_timer = 0.0
 
     def update(self, dt: float):
+        if getattr(self, "frozen", False):
+            return
         super().update(dt)
         self.pulse_timer += dt
 
@@ -118,7 +124,28 @@ class PowerAsteroid(Asteroid):
             (self.pos.x - glow_r, self.pos.y - glow_r),
         )
         pts = [(self.pos + p) for p in self.poly]
+        if getattr(self, "frozen", False):
+            pg.draw.polygon(surf, C.ICY_BLUE, pts, width=0)
         pg.draw.polygon(surf, C.SPREAD_COLOR, pts, width=2)
+
+class ClockItem(pg.sprite.Sprite):
+    def __init__(self, pos: Vec):
+        super().__init__()
+        self.pos = Vec(pos)
+        self.r = C.CLOCK_RADIUS
+        self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
+        self.ttl = 15.0  # disappears after 15 seconds
+
+    def update(self, dt: float):
+        self.ttl -= dt
+        if self.ttl <= 0:
+            self.kill()
+        self.rect.center = self.pos
+
+    def draw(self, surf: pg.Surface):
+        pg.draw.circle(surf, C.CLOCK_COLOR, self.pos, self.r, width=2)
+        pg.draw.line(surf, C.CLOCK_COLOR, self.pos, self.pos + Vec(0, -self.r * 0.8), 2)
+        pg.draw.line(surf, C.CLOCK_COLOR, self.pos, self.pos + Vec(self.r * 0.6, 0), 2)
 
 
 class Ship(pg.sprite.Sprite):
