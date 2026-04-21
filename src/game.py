@@ -34,7 +34,7 @@ class Game:
         self.go_fade = 0.0      # Temporizador de fade-in da tela de game over
 
     def run(self):
-        # Process events, update the active scene, and render each frame.
+        
         while True:
             dt = self.clock.tick(C.FPS) / 1000.0
             for e in pg.event.get():
@@ -114,7 +114,7 @@ class Game:
              C.WIDTH // 2 - 90, C.HEIGHT // 2 + 80)
 
     def draw_menu(self):
-        # Draw the title screen and the basic control instructions.
+        
         text(self.screen, self.big, "ASTEROIDS",
              C.WIDTH // 2 - 150, 180)
         text(self.screen, self.font,

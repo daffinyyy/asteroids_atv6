@@ -14,15 +14,12 @@ from utils import Vec, rand_edge_pos, rand_unit_vec
 
 
 class World:
-    # Initialize the world state, entity groups, timers, and player progress.
     def __init__(self):
         self.ship = Ship(Vec(C.WIDTH / 2, C.HEIGHT / 2))
         self.bullets = pg.sprite.Group()
         self.ufo_bullets = pg.sprite.Group()
         self.asteroids = pg.sprite.Group()
         self.ufos = pg.sprite.Group()
-        # self.parasites = pg.sprite.Group()
-        # self.parasite_timer = uniform(C.PARASITE_TIMER_MIN, C.PARASITE_TIMER_MAX)
         self.black_hole = None
         self.bh_timer = uniform(C.BH_TIMER_MIN, C.BH_TIMER_MAX)
         self.bh_duration = 0
@@ -33,11 +30,7 @@ class World:
         self.wave_cool = C.WAVE_DELAY
         self.safe = C.SAFE_SPAWN_TIME
         self.ufo_timer = C.UFO_SPAWN_EVERY
-        self.game_over = False  # Sinaliza fim de jogo para a cena principal
-        # self.boss = None
-        # self.boss_active = False
-        # self.boss_warning = 0.0
-        # self.boss_bullets = pg.sprite.Group()
+        self.game_over = False  
         self.boss_defeated_timer = 0.0
         self.power_asteroids = pg.sprite.Group()
         self.spread_boss_timer = C.SPREAD_BOSS_INTERVAL
@@ -45,10 +38,7 @@ class World:
         self.life_items = pg.sprite.Group()
         self.freeze_timer = 0.0
 
-
-
     def start_wave(self):
-        # Spawn a new asteroid wave with difficulty based on the current round.
         self.wave += 1
         count = 3 + self.wave
         for _ in range(count):
@@ -83,7 +73,6 @@ class World:
         self.all_sprites.add(pa)
 
     def spawn_ufo(self):
-        # Spawn a single UFO at a screen edge and send it across the playfield.
         if self.ufos:
             return
         small = uniform(0, 1) < 0.5
@@ -95,7 +84,6 @@ class World:
         self.all_sprites.add(ufo)
 
     def ufo_try_fire(self):
-        # Let every active UFO attempt to fire at the ship.
         for ufo in self.ufos:
             bullet = ufo.fire_at(self.ship.pos)
             if bullet:
@@ -192,7 +180,6 @@ class World:
         #             self.spawn_black_hole()
 
 
-        #efeito de gravidade do buraco negro
         if self.black_hole:
             dir_vec = self.black_hole.pos - self.ship.pos
             dist = dir_vec.length()
@@ -213,7 +200,6 @@ class World:
             self.safe -= dt
             self.ship.invuln = 0.5
 
-        # if not self.boss_active:
         if self.ufos:
             self.ufo_try_fire()
         else:
@@ -308,7 +294,6 @@ class World:
     #         self.spawn_power_asteroid()
 
     def handle_collisions(self):
-        # Resolve collisions between bullets, asteroids, UFOs, and the ship.
         hits = pg.sprite.groupcollide(
             self.asteroids,
             self.bullets,
@@ -318,7 +303,6 @@ class World:
         )
         for ast, _ in hits.items():
             if isinstance(ast, PowerAsteroid):
-                # asteroide especial dropa item de vida extra
                 self.score += C.AST_SIZES[ast.size]["score"]
                 life = LifeItem(Vec(ast.pos))
                 self.life_items.add(life)
@@ -416,7 +400,6 @@ class World:
                 return
 
     def split_asteroid(self, ast: Asteroid):
-        # Destroy an asteroid, award score, and spawn its smaller fragments.
         self.score += C.AST_SIZES[ast.size]["score"]
         split = C.AST_SIZES[ast.size]["split"]
         pos = Vec(ast.pos)
@@ -433,7 +416,6 @@ class World:
             self.spawn_asteroid(pos, dirv * speed, s)
 
     def ship_die(self):
-        # Remove uma vida; sinaliza game over ou reposiciona a nave.
         self.lives -= 1
         if self.lives <= 0:
             self.game_over = True  # Game.run() detecta e muda de cena
@@ -449,7 +431,6 @@ class World:
         self.safe = C.SAFE_SPAWN_TIME
 
     def draw(self, surf: pg.Surface, font: pg.font.Font):
-        # Draw all world entities and the current HUD information.
         for spr in self.all_sprites:
             spr.draw(surf)
 
@@ -458,7 +439,6 @@ class World:
         label = font.render(txt, True, C.WHITE)
         surf.blit(label, (10, 10))
 
-        # dash 
         # if self.ship.cooldown_timer > 0:
         #     dl = font.render(f"DASH {self.ship.cooldown_timer:.1f}s", True, C.GRAY)
         # elif self.ship.is_dashing:
@@ -467,7 +447,6 @@ class World:
         #     dl = font.render("DASH OK", True, C.WHITE)
         # surf.blit(dl, (C.WIDTH - 130, 10))
 
-        # mostra o estado do spread shot no HUD
         if self.ship.spread_cool > 0:
             sl = font.render(f"SPREAD {self.ship.spread_cool:.1f}s", True, C.GRAY)
         else:
@@ -487,16 +466,3 @@ class World:
         if self.freeze_timer > 0:
             fl = font.render(f"FREEZE: {self.freeze_timer:.1f}s", True, C.ICY_BLUE)
             surf.blit(fl, (C.WIDTH // 2 - fl.get_width() // 2, 10))
-
-        # if self.boss and self.boss.alive():
-        #     self.boss.draw_hp_bar(surf)
-
-        # if self.boss_warning > 0 and not self.boss_active:
-        #     warn = font.render("!! BOSS INCOMING !!", True, C.RED)
-        #     rect = warn.get_rect(center=(C.WIDTH // 2, C.HEIGHT // 2))
-        #     surf.blit(warn, rect)
-
-        # if self.boss_defeated_timer > 0:
-        #     msg = font.render("BOSS DEFEATED!", True, C.ORANGE)
-        #     rect = msg.get_rect(center=(C.WIDTH // 2, C.HEIGHT // 2))
-        #     surf.blit(msg, rect)

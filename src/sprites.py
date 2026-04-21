@@ -11,7 +11,6 @@ from utils import Vec, angle_to_vec, draw_circle, draw_poly, wrap_pos
 
 
 class Bullet(pg.sprite.Sprite):
-    # Initialize a player bullet with position, velocity, and lifetime.
     def __init__(self, pos: Vec, vel: Vec):
         super().__init__()
         self.pos = Vec(pos)
@@ -21,7 +20,6 @@ class Bullet(pg.sprite.Sprite):
         self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
 
     def update(self, dt: float):
-        # Move the bullet, wrap it on screen, and expire it over time.
         self.pos += self.vel * dt
         self.pos = wrap_pos(self.pos)
         self.ttl -= dt
@@ -30,12 +28,10 @@ class Bullet(pg.sprite.Sprite):
         self.rect.center = self.pos
 
     def draw(self, surf: pg.Surface):
-        # Draw the bullet on the target surface.
         draw_circle(surf, self.pos, self.r)
 
 
 class UfoBullet(pg.sprite.Sprite):
-    # Initialize a UFO bullet with position, velocity, and lifetime.
     def __init__(self, pos: Vec, vel: Vec):
         super().__init__()
         self.pos = Vec(pos)
@@ -45,7 +41,6 @@ class UfoBullet(pg.sprite.Sprite):
         self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
 
     def update(self, dt: float):
-        # Move the UFO bullet, wrap it on screen, and expire it over time.
         self.pos += self.vel * dt
         self.pos = wrap_pos(self.pos)
         self.ttl -= dt
@@ -54,12 +49,10 @@ class UfoBullet(pg.sprite.Sprite):
         self.rect.center = self.pos
 
     def draw(self, surf: pg.Surface):
-        # Draw the UFO bullet on the target surface.
         draw_circle(surf, self.pos, self.r)
 
 
 class Asteroid(pg.sprite.Sprite):
-    # Initialize an asteroid with its position, velocity, and size profile.
     def __init__(self, pos: Vec, vel: Vec, size: str):
         super().__init__()
         self.pos = Vec(pos)
@@ -70,7 +63,6 @@ class Asteroid(pg.sprite.Sprite):
         self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
 
     def _make_poly(self):
-        # Build an irregular polygon outline based on the asteroid size.
         steps = 12 if self.size == "L" else 10 if self.size == "M" else 8
         pts = []
         for i in range(steps):
@@ -83,7 +75,6 @@ class Asteroid(pg.sprite.Sprite):
         return pts
 
     def update(self, dt: float):
-        # Move the asteroid and wrap it across the screen.
         if getattr(self, "frozen", False):
             return
         self.pos += self.vel * dt
@@ -133,7 +124,7 @@ class ClockItem(pg.sprite.Sprite):
         self.pos = Vec(pos)
         self.r = C.CLOCK_RADIUS
         self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
-        self.ttl = 15.0  # disappears after 15 seconds
+        self.ttl = 15.0  
 
     def update(self, dt: float):
         self.ttl -= dt
@@ -148,7 +139,6 @@ class ClockItem(pg.sprite.Sprite):
 
 
 class LifeItem(pg.sprite.Sprite):
-    # power-up de vida extra — aparece ao destruir o asteroide especial
     def __init__(self, pos: Vec):
         super().__init__()
         self.pos = Vec(pos)
@@ -165,11 +155,9 @@ class LifeItem(pg.sprite.Sprite):
         self.rect.center = self.pos
 
     def draw(self, surf: pg.Surface):
-        # desenha um coracao simples pulsando
         scale = 1.0 + 0.15 * math.sin(self.pulse_timer * 4)
         r = int(self.r * scale)
         cx, cy = int(self.pos.x), int(self.pos.y)
-        # dois circulos em cima + triangulo embaixo = coracao
         pg.draw.circle(surf, C.LIFE_COLOR, (cx - r // 3, cy - r // 4), r // 2)
         pg.draw.circle(surf, C.LIFE_COLOR, (cx + r // 3, cy - r // 4), r // 2)
         pg.draw.polygon(surf, C.LIFE_COLOR, [
@@ -180,7 +168,6 @@ class LifeItem(pg.sprite.Sprite):
 
 
 class Ship(pg.sprite.Sprite):
-    # Initialize the player ship and its gameplay state.
     def __init__(self, pos: Vec):
         super().__init__()
         self.pos = Vec(pos)
@@ -197,18 +184,16 @@ class Ship(pg.sprite.Sprite):
         # self._pre_dash_vel = None
         self.has_spread_shot = False
         self.shield_active = False
-        self.shield_timer = 0.0      # tempo restante de duração
-        self.shield_cooldown = 0.0   # tempo restante de cooldown
+        self.shield_timer = 0.0      
+        self.shield_cooldown = 0.0   
 
     def activate_shield(self):
-        # Ativa o shield se não estiver em cooldown e não estiver já ativo.
         if self.shield_active or self.shield_cooldown > 0:
             return
         self.shield_active = True
         self.shield_timer = C.SHIELD_DURATION
         self.shield_cooldown = C.SHIELD_COOLDOWN
         
-        # cooldown do tiro espalhado (habilidade do shift direito)
         self.spread_cool = 0.0
 
     def control(self, keys: pg.key.ScancodeWrapper, dt: float):
@@ -242,7 +227,7 @@ class Ship(pg.sprite.Sprite):
         return Bullet(pos, vel)
 
     def spread_fire(self):
-        # dispara tiros em todas as direções (habilidade com cooldown)
+        # dispara tiros em todas as direções 
         if self.spread_cool > 0:
             return None
         self.spread_cool = C.SPREAD_COOLDOWN
@@ -257,7 +242,6 @@ class Ship(pg.sprite.Sprite):
         return bullets
 
     def hyperspace(self):
-        # Teleport the ship to a random location and reset its momentum.
         self.pos = Vec(uniform(0, C.WIDTH), uniform(0, C.HEIGHT))
         self.vel.xy = (0, 0)
         self.invuln = 1.0
@@ -278,7 +262,6 @@ class Ship(pg.sprite.Sprite):
     #     return self.invuln > 0
 
     def update(self, dt: float):
-        # Advance cooldowns, move the ship, and wrap it on screen.
         if self.cool > 0:
             self.cool -= dt
         if self.invuln > 0:
@@ -293,7 +276,6 @@ class Ship(pg.sprite.Sprite):
             if self.shield_cooldown < 0:
                 self.shield_cooldown = 0.0
             
-        # reduz cooldown do spread shot
         if self.spread_cool > 0:
             self.spread_cool -= dt
             if self.spread_cool < 0:
@@ -315,7 +297,6 @@ class Ship(pg.sprite.Sprite):
         self.rect.center = self.pos
 
     def draw(self, surf: pg.Surface):
-        # Draw the ship and its temporary invulnerability indicator.
         dirv = angle_to_vec(self.angle)
         left = angle_to_vec(self.angle + 140)
         right = angle_to_vec(self.angle - 140)
@@ -345,7 +326,6 @@ class Ship(pg.sprite.Sprite):
 
 
 class UFO(pg.sprite.Sprite):
-    # Initialize a UFO enemy with its size profile and movement state.
     def __init__(self, pos: Vec, small: bool):
         super().__init__()
         self.pos = Vec(pos)
@@ -359,7 +339,6 @@ class UFO(pg.sprite.Sprite):
         self.dir = Vec(1, 0) if uniform(0, 1) < 0.5 else Vec(-1, 0)
 
     def update(self, dt: float):
-        # Move the UFO, advance its fire cooldown, and remove it off screen.
         self.pos += self.dir * self.speed * dt
         self.cool -= dt
         if self.pos.x < -self.r * 2 or self.pos.x > C.WIDTH + self.r * 2:
@@ -367,7 +346,6 @@ class UFO(pg.sprite.Sprite):
         self.rect.center = self.pos
 
     def fire_at(self, target_pos: Vec) -> UfoBullet | None:
-        # Fire a bullet toward the ship with accuracy based on the UFO type.
         if self.cool > 0:
             return None
         aim_vec = Vec(target_pos) - self.pos
@@ -383,7 +361,6 @@ class UFO(pg.sprite.Sprite):
         return UfoBullet(spawn_pos, vel)
 
     def draw(self, surf: pg.Surface):
-        # Draw the UFO body on the target surface.
         w, h = self.r * 2, self.r
         rect = pg.Rect(0, 0, w, h)
         rect.center = self.pos
@@ -473,173 +450,3 @@ class BossBullet(pg.sprite.Sprite):
 
     def draw(self, surf: pg.Surface):
         pg.draw.circle(surf, C.BOSS_BULLET_COLOR, self.pos, self.r)
-
-
-# class Boss(pg.sprite.Sprite):
-
-#     def __init__(self):
-#         super().__init__()
-#         self.max_hp = C.BOSS_HP
-#         self.hp = C.BOSS_HP
-#         self.r = C.BOSS_RADIUS
-#         self.speed = C.BOSS_SPEED
-#         self.rect = pg.Rect(0, 0, self.r * 2, self.r * 2)
-
-#         self.waypoints = [
-#             Vec(80, 60),
-#             Vec(C.WIDTH - 80, 60),
-#             Vec(C.WIDTH - 80, C.HEIGHT - 60),
-#             Vec(80, C.HEIGHT - 60),
-#         ]
-#         self.wp_index = 0
-#         self.pos = Vec(self.waypoints[0])
-
-#         self.fire_cool = 0.0
-#         self.barrage_cool = 6.0
-#         self.asteroid_cool = C.BOSS_ASTEROID_INTERVAL
-#         self.dash_cool = 8.0
-#         self.is_dashing = False
-#         self.dash_timer = 0.0
-#         self.dash_vel = Vec(0, 0)
-
-#         self.rot_angle = 0.0
-#         self.pulse_timer = 0.0
-
-#     @property
-#     def phase(self):
-#         ratio = self.hp / self.max_hp
-#         if ratio > 0.6:
-#             return 1
-#         elif ratio > 0.3:
-#             return 2
-#         return 3
-
-#     @property
-#     def fire_rate(self):
-#         if self.phase == 1:
-#             return C.BOSS_FIRE_RATE_P1
-#         elif self.phase == 2:
-#             return C.BOSS_FIRE_RATE_P2
-#         return C.BOSS_FIRE_RATE_P3
-
-#     def take_damage(self, amount):
-#         self.hp -= amount
-#         if self.hp <= 0:
-#             self.hp = 0
-#             self.kill()
-
-#     def update(self, dt: float):
-#         self.rot_angle += 30 * dt
-#         self.pulse_timer += dt
-#         self.fire_cool -= dt
-#         self.barrage_cool -= dt
-#         self.asteroid_cool -= dt
-#         self.dash_cool -= dt
-
-#         if self.is_dashing:
-#             self.dash_timer -= dt
-#             self.pos += self.dash_vel * dt
-#             self.pos.x = max(self.r, min(C.WIDTH - self.r, self.pos.x))
-#             self.pos.y = max(self.r, min(C.HEIGHT - self.r, self.pos.y))
-#             if self.dash_timer <= 0:
-#                 self.is_dashing = False
-#         else:
-#             target = self.waypoints[self.wp_index]
-#             direction = target - self.pos
-#             dist = direction.length()
-#             if dist < 5:
-#                 self.wp_index = (self.wp_index + 1) % len(self.waypoints)
-#             else:
-#                 move = direction.normalize() * self.speed * dt
-#                 self.pos += move
-
-#         speed_mult = 1 + (3 - self.phase) * 0.3
-#         self.speed = C.BOSS_SPEED * speed_mult
-
-#         self.rect.center = self.pos
-
-#     def try_fire(self, ship_pos: Vec):
-#         if self.fire_cool > 0:
-#             return None
-#         self.fire_cool = self.fire_rate
-#         aim = Vec(ship_pos) - self.pos
-#         if aim.length_squared() == 0:
-#             return None
-#         aim = aim.normalize()
-#         spread = uniform(-5, 5)
-#         aim = aim.rotate(spread)
-#         vel = aim * C.BOSS_BULLET_SPEED
-#         return BossBullet(self.pos + aim * (self.r + 8), vel)
-
-#     def try_barrage(self):
-#         if self.barrage_cool > 0 or self.phase == 1:
-#             return []
-#         self.barrage_cool = 5.0 if self.phase == 2 else 3.0
-#         bullets = []
-#         for i in range(C.BOSS_BARRAGE_COUNT):
-#             angle = (360 / C.BOSS_BARRAGE_COUNT) * i
-#             rad = math.radians(angle)
-#             direction = Vec(math.cos(rad), math.sin(rad))
-#             vel = direction * C.BOSS_BULLET_SPEED * 0.8
-#             bullets.append(
-#                 BossBullet(self.pos + direction * (self.r + 8), vel)
-#             )
-#         return bullets
-
-#     def try_dash(self, ship_pos: Vec):
-#         if self.dash_cool > 0 or self.phase == 1:
-#             return
-#         self.dash_cool = 6.0 if self.phase == 2 else 4.0
-#         aim = Vec(ship_pos) - self.pos
-#         if aim.length_squared() > 0:
-#             self.dash_vel = aim.normalize() * C.BOSS_DASH_SPEED
-#             self.is_dashing = True
-#             self.dash_timer = C.BOSS_DASH_DURATION
-
-#     def draw(self, surf: pg.Surface):
-#         pulse = 1.0 + 0.08 * math.sin(self.pulse_timer * 3)
-#         r = self.r * pulse
-
-#         aura_r = int(r + 12 + 4 * math.sin(self.pulse_timer * 2))
-#         aura_surf = pg.Surface((aura_r * 2, aura_r * 2), pg.SRCALPHA)
-#         pg.draw.circle(
-#             aura_surf, (220, 30, 30, 40), (aura_r, aura_r), aura_r
-#         )
-#         surf.blit(aura_surf, (self.pos.x - aura_r, self.pos.y - aura_r))
-
-#         pts = []
-#         for i in range(8):
-#             angle = math.radians(self.rot_angle + i * 45)
-#             jitter = 1.0 + 0.05 * math.sin(self.pulse_timer * 5 + i)
-#             px = self.pos.x + math.cos(angle) * r * jitter
-#             py = self.pos.y + math.sin(angle) * r * jitter
-#             pts.append((px, py))
-
-#         if self.phase == 1:
-#             color = C.RED
-#         elif self.phase == 2:
-#             color = C.ORANGE
-#         else:
-#             color = C.DARK_RED
-
-#         pg.draw.polygon(surf, color, pts)
-#         pg.draw.polygon(surf, C.WHITE, pts, width=2)
-
-#         eye_dir = Vec(0, 0)
-#         if hasattr(self, '_eye_target'):
-#             eye_dir = Vec(self._eye_target) - self.pos
-#             if eye_dir.length_squared() > 0:
-#                 eye_dir = eye_dir.normalize() * 6
-#         eye_pos = (int(self.pos.x + eye_dir.x), int(self.pos.y + eye_dir.y))
-#         pg.draw.circle(surf, C.WHITE, eye_pos, 6)
-#         pg.draw.circle(surf, C.BLACK, eye_pos, 3)
-
-#     def draw_hp_bar(self, surf: pg.Surface):
-#         bar_w = 300
-#         bar_h = 12
-#         x = (C.WIDTH - bar_w) // 2
-#         y = 20
-#         ratio = self.hp / self.max_hp
-#         pg.draw.rect(surf, C.DARK_RED, (x, y, bar_w, bar_h))
-#         pg.draw.rect(surf, C.RED, (x, y, int(bar_w * ratio), bar_h))
-#         pg.draw.rect(surf, C.WHITE, (x, y, bar_w, bar_h), 1)
